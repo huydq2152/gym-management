@@ -3,16 +3,16 @@ using GymManagement.Application.Common.Interfaces;
 using GymManagement.Domain.Subscriptions;
 using MediatR;
 
-namespace GymManagement.Application.Subscriptions.Commands;
+namespace GymManagement.Application.Subscriptions.Commands.CreateSubscription;
 
 public class CreateSubscriptionCommandHandler : IRequestHandler<CreateSubscriptionCommand, ErrorOr<Subscription>>
 {
-    private readonly ISubscriptionRepository _subscriptionRepository;
+    private readonly ISubscriptionsRepository _subscriptionsRepository;
     private readonly IUnitOfWork _unitOfWork;
 
-    public CreateSubscriptionCommandHandler(ISubscriptionRepository subscriptionRepository, IUnitOfWork unitOfWork)
+    public CreateSubscriptionCommandHandler(ISubscriptionsRepository subscriptionsRepository, IUnitOfWork unitOfWork)
     {
-        _subscriptionRepository = subscriptionRepository;
+        _subscriptionsRepository = subscriptionsRepository;
         _unitOfWork = unitOfWork;
     }
 
@@ -22,7 +22,7 @@ public class CreateSubscriptionCommandHandler : IRequestHandler<CreateSubscripti
             subscriptionType: request.SubscriptionType,
             adminId: request.AdminId);
         
-        await _subscriptionRepository.AddSubscriptionAsync(subscription, cancellationToken);
+        await _subscriptionsRepository.AddSubscriptionAsync(subscription);
         
         await _unitOfWork.CommitChangesAsync(cancellationToken);
 
