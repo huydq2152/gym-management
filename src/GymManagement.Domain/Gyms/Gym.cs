@@ -50,7 +50,7 @@ public class Gym
     {
         if (_trainerIds.Contains(trainerId))
         {
-            return Error.Conflict(description: "Trainer already added to gym");
+            return GymErrors.TrainerIsAlreadyAdded;
         }
 
         _trainerIds.Add(trainerId);
