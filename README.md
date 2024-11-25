@@ -2,6 +2,20 @@
 
 ## Backend .net project
 
+### Implemented
+- CQRS pattern and mediaror pattern using MediatR
+- Splitting by feature (vertical slice architecture)
+- Result pattern
+- Repository pattern
+- Unit of work pattern
+- Rich domain model (domain driven design)
+- Strongly type enums
+- Handle error in both domain layer and application layer and convert to presentation layer
+- Implement Model validation, Application Cross-Cutting concerns, validating business rules in the domain layer using Fluent validation and MediatR pipeline behavior
+- Domain events pattern with orchestration approach
+- Eventual Consistency and Transactional Consistency
+- Unit test using xunit
+
 ### Add Migrations:
 
 1. cd to GymManagement.Api project
