@@ -9,14 +9,12 @@ public class DeleteSubscriptionCommandHandler : IRequestHandler<DeleteSubscripti
     private readonly IUnitOfWork _unitOfWork;
     private readonly ISubscriptionsRepository _subscriptionsRepository;
     private readonly IAdminsRepository _adminsRepository;
-    private readonly IGymsRepository _gymsRepository;
 
-    public DeleteSubscriptionCommandHandler(IUnitOfWork unitOfWork, ISubscriptionsRepository subscriptionsRepository, IAdminsRepository adminsRepository, IGymsRepository gymsRepository)
+    public DeleteSubscriptionCommandHandler(IUnitOfWork unitOfWork, ISubscriptionsRepository subscriptionsRepository, IAdminsRepository adminsRepository)
     {
         _unitOfWork = unitOfWork;
         _subscriptionsRepository = subscriptionsRepository;
         _adminsRepository = adminsRepository;
-        _gymsRepository = gymsRepository;
     }
 
     public async Task<ErrorOr<Deleted>> Handle(DeleteSubscriptionCommand request, CancellationToken cancellationToken)
@@ -26,7 +24,6 @@ public class DeleteSubscriptionCommandHandler : IRequestHandler<DeleteSubscripti
         {
             return Error.NotFound(description: "Subscription not found");
         }
-        await _subscriptionsRepository.RemoveSubscriptionAsync(subscription);
         
         var admin = await _adminsRepository.GetByIdAsync(subscription.AdminId);
         if (admin is null)
@@ -35,11 +32,8 @@ public class DeleteSubscriptionCommandHandler : IRequestHandler<DeleteSubscripti
         }
         admin.DeleteSubscription(request.SubscriptionId);
         await _adminsRepository.UpdateAsync(admin);
-        
-        var gyms = await _gymsRepository.ListBySubscriptionIdAsync(request.SubscriptionId);
-        await _gymsRepository.RemoveRangeAsync(gyms);
-        
         await _unitOfWork.CommitChangesAsync(cancellationToken);
+        
         return Result.Deleted;
     }
 }
