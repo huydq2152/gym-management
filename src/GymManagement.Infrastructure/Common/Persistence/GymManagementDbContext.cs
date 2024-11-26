@@ -15,10 +15,10 @@ public class GymManagementDbContext : DbContext, IUnitOfWork
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly IPublisher _publisher;
 
-    public DbSet<Subscription> Subscriptions { get; set; } = null!;
-    public DbSet<Admin> Admins { get; set; } = null!;
-    public DbSet<Gym> Gyms { get; set; } = null!;
-
+    public virtual DbSet<Subscription> Subscriptions { get; set; } = null!;
+    public virtual DbSet<Admin> Admins { get; set; } = null!;
+    public virtual DbSet<Gym> Gyms { get; set; } = null!;
+    
     public GymManagementDbContext(DbContextOptions options, IHttpContextAccessor httpContextAccessor,
         IPublisher publisher) : base(options)
     {
