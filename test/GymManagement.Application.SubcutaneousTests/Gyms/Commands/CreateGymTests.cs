@@ -1,8 +1,10 @@
-using ErrorOr;
 using FluentAssertions;
 using GymManagement.Application.SubcutaneousTests.Common;
 using GymManagement.Domain.Subscriptions;
+using GymManagement.Infrastructure.Common.Persistence;
 using MediatR;
+using Microsoft.Extensions.DependencyInjection;
+using TestCommon.Admins;
 using TestCommon.Gyms;
 using TestCommon.Subscriptions;
 
@@ -11,16 +13,24 @@ namespace GymManagement.Application.SubcutaneousTests.Gyms.Commands;
 [Collection(MediatorFactoryCollection.CollectionName)]
 public class CreateGymTests
 {
+    private readonly MediatorFactory _mediatorFactoryProvider;
     private readonly IMediator _mediatorFactory;
 
-    public CreateGymTests(MediatorFactory mediatorFactory)
+    public CreateGymTests(MediatorFactory mediatorFactoryProvider)
     {
-        _mediatorFactory = mediatorFactory.CreateMediator();
+        _mediatorFactory = mediatorFactoryProvider.CreateMediator();
+        _mediatorFactoryProvider = mediatorFactoryProvider;
     }
 
     [Fact]
     public async Task CreateGym_WhenValidCommand_ShouldCreateGym()
     {
+        using var scope = _mediatorFactoryProvider.Services.CreateScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<GymManagementDbContext>();
+        var admin = AdminFactory.CreateAdminWithNoSubscription();
+        await dbContext.Admins.AddAsync(admin);
+        await dbContext.SaveChangesAsync();
+        
         // Arrange
         var subscription = await CreateSubscription();
 
@@ -33,6 +43,28 @@ public class CreateGymTests
         // Assert
         createGymResult.IsError.Should().BeFalse();
         createGymResult.Value.SubscriptionId.Should().Be(subscription.Id);
+
+        var createdGym = await dbContext.Gyms.FindAsync(createGymResult.Value.Id);
+        createdGym.Should().NotBeNull();
+        createdGym!.Name.Should().Be(createGymCommand.Name);
+        createdGym.SubscriptionId.Should().Be(subscription.Id);
+        
+        await dbContext.Database.EnsureDeletedAsync();
+    }
+    
+    [Fact]
+    public async Task CreateGym_WhenInputSubscriptionIdNotFound_ShouldReturnError()
+    {
+        // Create a CreateGymCommand with a non-existing subscriptionId
+        var nonExistingSubscriptionId = Guid.NewGuid();
+        var createGymCommand = GymCommandFactory.CreateCreateGymCommand(subscriptionId: nonExistingSubscriptionId);
+
+        // Act
+        var createGymResult = await _mediatorFactory.Send(createGymCommand);
+
+        // Assert
+        createGymResult.IsError.Should().BeTrue();
+        createGymResult.FirstError.Description.Should().Be("Subscription not found");
     }
 
     [Theory]
