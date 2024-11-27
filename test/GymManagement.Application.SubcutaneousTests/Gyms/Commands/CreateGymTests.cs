@@ -13,23 +13,21 @@ namespace GymManagement.Application.SubcutaneousTests.Gyms.Commands;
 [Collection(MediatorFactoryCollection.CollectionName)]
 public class CreateGymTests
 {
-    private readonly MediatorFactory _mediatorFactoryProvider;
-    private readonly IMediator _mediatorFactory;
+    private readonly IMediator _mediator;
+    private readonly GymManagementDbContext _dbContext;
 
-    public CreateGymTests(MediatorFactory mediatorFactoryProvider)
+    public CreateGymTests(GymManagementApplicationFactory applicationFactory)
     {
-        _mediatorFactory = mediatorFactoryProvider.CreateMediator();
-        _mediatorFactoryProvider = mediatorFactoryProvider;
+        _mediator = applicationFactory.CreateMediator();
+        _dbContext = applicationFactory.CreateDbContext();
     }
 
     [Fact]
     public async Task CreateGym_WhenValidCommand_ShouldCreateGym()
     {
-        using var scope = _mediatorFactoryProvider.Services.CreateScope();
-        var dbContext = scope.ServiceProvider.GetRequiredService<GymManagementDbContext>();
         var admin = AdminFactory.CreateAdminWithNoSubscription();
-        await dbContext.Admins.AddAsync(admin);
-        await dbContext.SaveChangesAsync();
+        await _dbContext.Admins.AddAsync(admin);
+        await _dbContext.SaveChangesAsync();
         
         // Arrange
         var subscription = await CreateSubscription();
@@ -38,18 +36,18 @@ public class CreateGymTests
         var createGymCommand = GymCommandFactory.CreateCreateGymCommand(subscriptionId: subscription.Id);
 
         // Act
-        var createGymResult = await _mediatorFactory.Send(createGymCommand);
+        var createGymResult = await _mediator.Send(createGymCommand);
 
         // Assert
         createGymResult.IsError.Should().BeFalse();
         createGymResult.Value.SubscriptionId.Should().Be(subscription.Id);
 
-        var createdGym = await dbContext.Gyms.FindAsync(createGymResult.Value.Id);
+        var createdGym = await _dbContext.Gyms.FindAsync(createGymResult.Value.Id);
         createdGym.Should().NotBeNull();
         createdGym!.Name.Should().Be(createGymCommand.Name);
         createdGym.SubscriptionId.Should().Be(subscription.Id);
         
-        await dbContext.Database.EnsureDeletedAsync();
+        await _dbContext.Database.EnsureDeletedAsync();
     }
     
     [Fact]
@@ -60,7 +58,7 @@ public class CreateGymTests
         var createGymCommand = GymCommandFactory.CreateCreateGymCommand(subscriptionId: nonExistingSubscriptionId);
 
         // Act
-        var createGymResult = await _mediatorFactory.Send(createGymCommand);
+        var createGymResult = await _mediator.Send(createGymCommand);
 
         // Assert
         createGymResult.IsError.Should().BeTrue();
@@ -78,7 +76,7 @@ public class CreateGymTests
         var createGymCommand = GymCommandFactory.CreateCreateGymCommand(name: gymName);
 
         // Act
-        var result = await _mediatorFactory.Send(createGymCommand);
+        var result = await _mediator.Send(createGymCommand);
 
         // Assert
         result.IsError.Should().BeTrue();
@@ -91,7 +89,7 @@ public class CreateGymTests
         var createSubscriptionCommand = SubscriptionCommandFactory.CreateCreateSubscriptionCommand();
 
         //  2. Sending it to MediatR
-        var result = await _mediatorFactory.Send(createSubscriptionCommand);
+        var result = await _mediator.Send(createSubscriptionCommand);
 
         //  3. Making sure it was created successfully
         result.IsError.Should().BeFalse();

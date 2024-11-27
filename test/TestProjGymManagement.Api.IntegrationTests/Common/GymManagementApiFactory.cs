@@ -1,15 +1,15 @@
 using GymManagement.Api;
 using GymManagement.Infrastructure.Common.Persistence;
-using MediatR;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace GymManagement.Application.SubcutaneousTests.Common;
+namespace TestProjGymManagement.Api.IntegrationTests.Common;
 
-public class MediatorFactory : WebApplicationFactory<IAssemblyMarker>, IAsyncLifetime
+public class GymManagementApiFactory : WebApplicationFactory<IAssemblyMarker>, IAsyncLifetime
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -18,14 +18,17 @@ public class MediatorFactory : WebApplicationFactory<IAssemblyMarker>, IAsyncLif
             services.Remove(services.Single(s => s.ServiceType == typeof(DbContextOptions<GymManagementDbContext>)));
 
             services.AddDbContext<GymManagementDbContext>(options =>
-                options.UseInMemoryDatabase("InMemoryDbForTesting"));
+            {
+                options.UseInMemoryDatabase("InMemoryDbForTesting");
+                options.ConfigureWarnings(b => b.Ignore(InMemoryEventId.TransactionIgnoredWarning)); 
+            }, ServiceLifetime.Singleton);
         });
     }
-
-    public IMediator CreateMediator()
+    
+    public GymManagementDbContext CreateDbContext()
     {
         var serviceScope = Services.CreateScope();
-        return serviceScope.ServiceProvider.GetRequiredService<IMediator>();
+        return serviceScope.ServiceProvider.GetRequiredService<GymManagementDbContext>();
     }
 
     public Task InitializeAsync() => Task.CompletedTask;
