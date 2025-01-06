@@ -14,7 +14,7 @@
 - Implement Model validation, Application Cross-Cutting concerns, validating business rules in the domain layer using Fluent validation and MediatR pipeline behavior
 - Domain events pattern with orchestration approach
 - Eventual Consistency and Transactional Consistency
-- Unit test using xunit
+- Unit test, Subcutaneous test, Integration test using xunit
 
 ### Add Migrations:
 
