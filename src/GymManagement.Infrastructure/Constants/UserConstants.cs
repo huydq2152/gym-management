@@ -1,6 +1,6 @@
-﻿namespace TestCommon.ConstantsTest;
+﻿namespace GymManagement.Infrastructure.Constants;
 
-public static class UserConstantsTest
+public static class UserConstants
 {
     /// <summary>
     /// The user ID is hard coded in the `AdminConfiguration` to the GUID below.
