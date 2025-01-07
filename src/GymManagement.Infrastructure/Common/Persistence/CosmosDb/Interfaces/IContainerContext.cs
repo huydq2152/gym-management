@@ -1,4 +1,4 @@
-﻿using GymManagement.Domain.Common;
+﻿using GymManagement.Domain.Common.CosmosDB;
 using Microsoft.Azure.Cosmos;
 
 namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb.Interfaces
@@ -7,7 +7,7 @@ namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb.Interfaces
     ///  Defines the container level context
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    public interface IContainerContext<T> where T : Entity
+    public interface IContainerContext<T> where T : CosmosDBEntity
     {
         string ContainerName { get; }
         Guid GenerateId(T entity);

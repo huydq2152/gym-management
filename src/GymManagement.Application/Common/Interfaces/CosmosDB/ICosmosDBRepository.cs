@@ -1,9 +1,10 @@
 ﻿using Ardalis.Specification;
 using GymManagement.Domain.Common;
+using GymManagement.Domain.Common.CosmosDB;
 
 namespace GymManagement.Application.Common.Interfaces.CosmosDB
 {
-    public interface ICosmosDBRepository<T> where T : Entity
+    public interface ICosmosDBRepository<T> where T : CosmosDBEntity
     {
         /// <summary>
         ///     Get items given a string SQL query directly.

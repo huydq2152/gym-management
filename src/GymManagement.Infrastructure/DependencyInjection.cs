@@ -86,7 +86,7 @@ public static class DependencyInjection
             cosmosDbConfig.DatabaseName,
             cosmosDbConfig.Containers);
         
-        services.AddScoped<ICosmosDBAdminRepository, CosmosDBAdminRepository>();
+        services.AddScoped<ICosmosDBRoomRepository, CosmosDbRoomRepository>();
 
         return services;
     }

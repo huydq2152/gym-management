@@ -1,6 +1,6 @@
 namespace GymManagement.Domain.Common.CosmosDB;
 
-public class CosmosDBAudit : Entity
+public class CosmosDBAudit : CosmosDBEntity
 {
     /// <summary>
     ///     Type of the entity

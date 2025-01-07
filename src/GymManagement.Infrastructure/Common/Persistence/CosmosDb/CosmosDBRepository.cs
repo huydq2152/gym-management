@@ -2,8 +2,6 @@ using System.Net;
 using Ardalis.Specification;
 using Ardalis.Specification.EntityFrameworkCore;
 using GymManagement.Application.Common.Interfaces.CosmosDB;
-using GymManagement.Domain.Admins.CosmosDB;
-using GymManagement.Domain.Common;
 using GymManagement.Domain.Common.CosmosDB;
 using GymManagement.Infrastructure.Common.Persistence.CosmosDb.Interfaces;
 using Microsoft.Azure.Cosmos;
@@ -12,7 +10,7 @@ using Newtonsoft.Json;
 
 namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb
 {
-    public abstract class CosmosDbRepository<T> : ICosmosDBRepository<T>, IContainerContext<T> where T : Entity
+    public abstract class CosmosDbRepository<T> : ICosmosDBRepository<T>, IContainerContext<T> where T : CosmosDBEntity
     {
         /// <summary>
         ///     Name of the CosmosDB container
@@ -158,7 +156,7 @@ namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb
         /// </summary>
         /// <param name="specification"></param>
         /// <returns></returns>
-        private IQueryable<T> ApplySpecification(ISpecification<T> specification)
+        public IQueryable<T> ApplySpecification(ISpecification<T> specification)
         {
             return SpecificationEvaluator.Default.GetQuery(_container.GetItemLinqQueryable<T>(), specification);
         }
