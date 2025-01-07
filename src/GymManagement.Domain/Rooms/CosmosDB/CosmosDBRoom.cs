@@ -4,7 +4,7 @@ namespace GymManagement.Domain.Rooms.CosmosDB;
 
 public class CosmosDBRoom : CosmosDBEntity
 {
-    public string Name { get; } = null!;
-    public Guid GymId { get; }
-    public int MaxDailySessions { get; }
+    public string Name { get; set; } = null!;
+    public Guid GymId { get; set; }
+    public int MaxDailySessions { get; set; }
 }

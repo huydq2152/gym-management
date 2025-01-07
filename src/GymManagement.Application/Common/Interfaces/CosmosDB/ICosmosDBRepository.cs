@@ -1,5 +1,4 @@
 ﻿using Ardalis.Specification;
-using GymManagement.Domain.Common;
 using GymManagement.Domain.Common.CosmosDB;
 
 namespace GymManagement.Application.Common.Interfaces.CosmosDB

@@ -78,6 +78,10 @@ namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb
 
         public async Task AddItemAsync(T item)
         {
+            // Audit
+            await Audit(item);
+            
+            // Create
             item.Id = GenerateId(item);
             await _container.CreateItemAsync(item, ResolvePartitionKey(item.Id));
         }
