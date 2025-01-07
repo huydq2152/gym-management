@@ -2,7 +2,7 @@ namespace GymManagement.Domain.Common;
 
 public abstract class Entity
 {
-    public Guid Id { get; init; }
+    public Guid Id { get; set; }
 
     protected readonly List<IDomainEvent> _domainEvents = new();
 
