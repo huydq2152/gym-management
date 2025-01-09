@@ -5,7 +5,7 @@ using GymManagement.Infrastructure.Common.Persistence.CosmosDb.Interfaces;
 using Microsoft.Azure.Cosmos;
 using Microsoft.EntityFrameworkCore;
 
-namespace GymManagement.Infrastructure.Admins.Persistence.CosmosDB;
+namespace GymManagement.Infrastructure.Rooms.Persistence.CosmosDB;
 
 public class CosmosDbRoomRepository : CosmosDbRepository<CosmosDBRoom>, ICosmosDBRoomRepository
 {

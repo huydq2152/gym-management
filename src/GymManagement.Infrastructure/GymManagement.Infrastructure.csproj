@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <Folder Include="Authentication\" />
+    <Folder Include="Rooms\Persistence\" />
   </ItemGroup>
 
   <PropertyGroup>
