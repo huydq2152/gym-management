@@ -2,7 +2,7 @@ using GymManagement.EventBus.Messages.IntegrationEvents.Interfaces;
 
 namespace GymManagement.EventBus.Messages.IntegrationEvents.Events;
 
-public record CreateRoomEvent : IntegrationBaseEvent, ICreateRoomEvent
+public record CreateRoomCosmosDBEvent : IntegrationBaseEvent, ICreateRoomEvent
 {
     public Guid Id { get; set; }
     public string Name { get; set; }

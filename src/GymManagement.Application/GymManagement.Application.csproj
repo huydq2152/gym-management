@@ -1,6 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <ProjectReference Include="..\EventBus\GymManagement.EventBus.Messages\GymManagement.EventBus.Messages.csproj" />
     <ProjectReference Include="..\GymManagement.Domain\GymManagement.Domain.csproj" />
   </ItemGroup>
 

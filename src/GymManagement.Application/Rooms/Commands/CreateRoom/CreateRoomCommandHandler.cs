@@ -1,8 +1,8 @@
 using ErrorOr;
 using GymManagement.Application.Common.Interfaces;
-using GymManagement.Application.Common.Interfaces.CosmosDB;
 using GymManagement.Domain.Rooms;
-using GymManagement.Domain.Rooms.CosmosDB;
+using GymManagement.EventBus.Messages.IntegrationEvents.Events;
+using MassTransit;
 using MediatR;
 
 namespace GymManagement.Application.Rooms.Commands.CreateRoom;
@@ -12,17 +12,18 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Error
     private readonly ISubscriptionsRepository _subscriptionsRepository;
     private readonly IGymsRepository _gymsRepository;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly ICosmosDBRoomRepository _cosmosDBRoomRepository;
+    private readonly IPublishEndpoint _publishEndpoint;
+
 
     public CreateRoomCommandHandler(
         ISubscriptionsRepository subscriptionsRepository,
         IGymsRepository gymsRepository,
-        IUnitOfWork unitOfWork, ICosmosDBRoomRepository cosmosDbRoomRepository)
+        IUnitOfWork unitOfWork, IPublishEndpoint publishEndpoint)
     {
         _subscriptionsRepository = subscriptionsRepository;
         _gymsRepository = gymsRepository;
         _unitOfWork = unitOfWork;
-        _cosmosDBRoomRepository = cosmosDbRoomRepository;
+        _publishEndpoint = publishEndpoint;
     }
 
     public async Task<ErrorOr<Room>> Handle(CreateRoomCommand command, CancellationToken cancellationToken)
@@ -53,14 +54,13 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Error
             return addGymResult.Errors;
         }
 
-        var cosmosDBRoom = new CosmosDBRoom
+        await _publishEndpoint.Publish(new CreateRoomCosmosDBEvent
         {
             Id = room.Id,
             Name = room.Name,
             GymId = room.GymId,
             MaxDailySessions = room.MaxDailySessions
-        };
-        await _cosmosDBRoomRepository.AddItemAsync(cosmosDBRoom);
+        }, cancellationToken);
 
         // Note: the room itself isn't stored in our database, but rather
         // in the "SessionManagement" system that is not in scope of this course.
