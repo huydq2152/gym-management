@@ -20,9 +20,9 @@ public class CosmosDbRoomRepository : CosmosDbRepository<CosmosDBRoom>, ICosmosD
         return Guid.NewGuid();
     }
 
-    public override PartitionKey ResolvePartitionKey(Guid entityId)
+    public override PartitionKey ResolvePartitionKey(Guid input)
     {
-        return new PartitionKey(entityId.ToString());
+        return new PartitionKey(input.ToString());
     }
 
     public async Task<List<CosmosDBRoom>> GetRoomByGymIdAsync(Guid gymId)

@@ -27,9 +27,9 @@ namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb
         /// <summary>
         ///     Resolve the partition key
         /// </summary>
-        /// <param name="entityId"></param>
+        /// <param name="input"></param>
         /// <returns></returns>
-        public abstract PartitionKey ResolvePartitionKey(Guid entityId);
+        public abstract PartitionKey ResolvePartitionKey(Guid input);
 
         /// <summary>
         ///     Generate id for the audit record.
@@ -49,9 +49,9 @@ namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb
         ///     Audit records for different entities will use different partition key values,
         ///     so we are not limited to the 20G per logical partition storage limit.
         /// </summary>
-        /// <param name="entityId"></param>
+        /// <param name="input"></param>
         /// <returns></returns>
-        public virtual PartitionKey ResolveAuditPartitionKey(Guid entityId) => new PartitionKey(entityId.ToString());
+        public virtual PartitionKey ResolveAuditPartitionKey(Guid input) => new(input.ToString());
 
         /// <summary>
         ///     Cosmos DB factory
@@ -76,22 +76,22 @@ namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb
             _auditContainer = _cosmosDbContainerFactory.GetContainer("Audit").Container;
         }
 
-        public async Task AddItemAsync(T item)
+        public async Task AddItemAsync(T item, Guid resolvePartitionKeyInput)
         {
             // Audit
             await Audit(item);
             
             // Create
             item.Id = GenerateId(item);
-            await _container.CreateItemAsync(item, ResolvePartitionKey(item.Id));
+            await _container.CreateItemAsync(item, ResolvePartitionKey(resolvePartitionKeyInput));
         }
 
-        public async Task DeleteItemAsync(Guid id)
+        public async Task DeleteItemAsync(Guid id, Guid resolvePartitionKeyInput)
         {
-            await _container.DeleteItemAsync<T>(id.ToString(), ResolvePartitionKey(id));
+            await _container.DeleteItemAsync<T>(id.ToString(), ResolvePartitionKey(resolvePartitionKeyInput));
         }
 
-        public async Task<T> GetItemAsync(Guid id)
+        public async Task<T> GetItemAsync(Guid id, Guid resolvePartitionKeyInput)
         {
             try
             {
@@ -147,12 +147,12 @@ namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb
             return await queryable.CountAsync();
         }
 
-        public async Task UpdateItemAsync(Guid id, T item)
+        public async Task UpdateItemAsync(Guid id, T item, Guid resolvePartitionKeyInput)
         {
             // Audit
             await Audit(item);
             // Update
-            await _container.UpsertItemAsync(item, ResolvePartitionKey(id));
+            await _container.UpsertItemAsync(item, ResolvePartitionKey(resolvePartitionKeyInput));
         }
 
         /// <summary>
@@ -179,7 +179,7 @@ namespace GymManagement.Infrastructure.Common.Persistence.CosmosDb
                 Entity = JsonConvert.SerializeObject(item)
             };
             auditItem.Id = GenerateAuditId(auditItem);
-            await _auditContainer.CreateItemAsync(auditItem, ResolveAuditPartitionKey(auditItem.Id));
+            await _auditContainer.CreateItemAsync(auditItem, ResolveAuditPartitionKey(auditItem.EntityId));
         }
     }
 }

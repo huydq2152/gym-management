@@ -20,12 +20,9 @@ public static class ServiceExtensions
 
     public static void ConfigureMassTransit(this IServiceCollection services)
     {
-        var settings = services.GetOptions<EventBusSettings>(nameof(EventBusSettings));
-        if (settings == null || string.IsNullOrEmpty(settings.HostAddress) ||
-            string.IsNullOrEmpty(settings.HostAddress))
+        var eventBusSettings = services.GetOptions<EventBusSettings>(nameof(EventBusSettings));
+        if (eventBusSettings == null || string.IsNullOrEmpty(eventBusSettings.HostAddress))
             throw new ArgumentNullException("EventBusSettings is not configured!");
-
-        var serviceBusConnection = new Uri(settings.HostAddress);
 
         services.AddMassTransit(config =>
         {
@@ -47,10 +44,11 @@ public static class ServiceExtensions
 
             config.UsingAzureServiceBus((context, cfg) =>
             {
-                cfg.Host(serviceBusConnection);
+                cfg.Host(eventBusSettings.HostAddress);
 
                 //cfg.UseServiceBusMessageScheduler();
-
+                
+                // CreateRoomCosmosDBEvent will be published to a topic
                 cfg.Send<CreateRoomCosmosDBEvent>(s =>
                 {
                     // Note: If your bussiness logic is ecommerce, you can use UseSessionIdFormatter and set the OrderId as
@@ -59,7 +57,6 @@ public static class ServiceExtensions
                     s.UsePartitionKeyFormatter(c => c.Message.GymId.ToString("D"));
                 });
                 
-                // Can use cfg.ConfigureEndpoints(context); instead of manually configure the endpoint for each event
                 cfg.SubscriptionEndpoint<CreateRoomCosmosDBEvent>("create-room-event-handler", e =>
                 {
                     e.ConfigureConsumeTopology = false;
