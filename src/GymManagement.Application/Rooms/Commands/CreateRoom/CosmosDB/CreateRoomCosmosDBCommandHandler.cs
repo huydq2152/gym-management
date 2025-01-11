@@ -23,7 +23,7 @@ public class CreateRoomCosmosDBCommandHandler: IRequestHandler<CreateRoomCosmosD
             GymId = request.GymId,
             MaxDailySessions = request.MaxDailySessions
         };
-        await _cosmosDBRoomRepository.AddItemAsync(cosmosDBRoom);
+        await _cosmosDBRoomRepository.AddItemAsync(cosmosDBRoom, request.GymId);
         
         return cosmosDBRoom;
     }

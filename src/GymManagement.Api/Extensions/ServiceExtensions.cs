@@ -1,4 +1,5 @@
-﻿using GymManagement.Api.Configurations;
+﻿using GymManagement.Api.Application.IntegrationEvents.EventsHandler;
+using GymManagement.Api.Configurations;
 using GymManagement.EventBus.Messages.IntegrationEvents.Events;
 using GymManagement.Infrastructure.Extensions;
 using MassTransit;
@@ -19,22 +20,48 @@ public static class ServiceExtensions
 
     public static void ConfigureMassTransit(this IServiceCollection services)
     {
-        var settings = services.GetOptions<EventBusSettings>(nameof(EventBusSettings));
-        if (settings == null || string.IsNullOrEmpty(settings.HostAddress) ||
-            string.IsNullOrEmpty(settings.HostAddress))
+        var eventBusSettings = services.GetOptions<EventBusSettings>(nameof(EventBusSettings));
+        if (eventBusSettings == null || string.IsNullOrEmpty(eventBusSettings.HostAddress))
             throw new ArgumentNullException("EventBusSettings is not configured!");
-
-        var serviceBusConnection = new Uri(settings.HostAddress);
-        //services.TryAddSingleton(KebabCaseEndpointNameFormatter.Instance);
 
         services.AddMassTransit(config =>
         {
+            //config.AddServiceBusMessageScheduler();
+
             config.SetKebabCaseEndpointNameFormatter();
 
-            config.UsingAzureServiceBus((_, cfg) =>
+            config.AddConsumer<CreateRoomEventHandler>();
+
+            config.AddConfigureEndpointsCallback((_, cfg) =>
             {
-                cfg.Host(serviceBusConnection);
-                cfg.Send<CreateRoomCosmosDBEvent>(s => s.UseSessionIdFormatter(c => c.Message.Id.ToString("D")));
+                if (cfg is IServiceBusReceiveEndpointConfigurator sb)
+                {
+                    // Consider using this configuration can lead to infinite loop of dead lettering
+                    sb.ConfigureDeadLetterQueueDeadLetterTransport();
+                    sb.ConfigureDeadLetterQueueErrorTransport();
+                }
+            });
+
+            config.UsingAzureServiceBus((context, cfg) =>
+            {
+                cfg.Host(eventBusSettings.HostAddress);
+
+                //cfg.UseServiceBusMessageScheduler();
+                
+                // CreateRoomCosmosDBEvent will be published to a topic
+                cfg.Send<CreateRoomCosmosDBEvent>(s =>
+                {
+                    // Note: If your bussiness logic is ecommerce, you can use UseSessionIdFormatter and set the OrderId as
+                    // the session id for all message in an activity stream include OrderShipped, OrderSubmitted, OrderPaid, etc. 
+
+                    s.UsePartitionKeyFormatter(c => c.Message.GymId.ToString("D"));
+                });
+                
+                cfg.SubscriptionEndpoint<CreateRoomCosmosDBEvent>("create-room-event-handler", e =>
+                {
+                    e.ConfigureConsumeTopology = false;
+                    e.Consumer<CreateRoomEventHandler>(context);
+                });
             });
         });
     }
