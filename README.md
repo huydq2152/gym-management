@@ -3,6 +3,7 @@
 ## Backend .net project
 
 ### Implemented
+
 - CQRS pattern and mediaror pattern using MediatR
 - Splitting by feature (vertical slice architecture)
 - Result pattern
@@ -15,6 +16,8 @@
 - Domain events pattern with orchestration approach
 - Eventual Consistency and Transactional Consistency
 - Unit test, Subcutaneous test, Integration test using xunit
+- No sql (azure Cosmos database)
+- Event driven design (Masstransit with azure service bus)
 
 ### Add Migrations:
 
