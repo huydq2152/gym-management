@@ -11,17 +11,19 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Error
 {
     private readonly ISubscriptionsRepository _subscriptionsRepository;
     private readonly IGymsRepository _gymsRepository;
+    private readonly IRoomChangeRepository _roomChangeRepository;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IPublishEndpoint _publishEndpoint;
 
 
     public CreateRoomCommandHandler(
         ISubscriptionsRepository subscriptionsRepository,
-        IGymsRepository gymsRepository,
+        IGymsRepository gymsRepository, IRoomChangeRepository roomChangeRepository,
         IUnitOfWork unitOfWork, IPublishEndpoint publishEndpoint)
     {
         _subscriptionsRepository = subscriptionsRepository;
         _gymsRepository = gymsRepository;
+        _roomChangeRepository = roomChangeRepository;
         _unitOfWork = unitOfWork;
         _publishEndpoint = publishEndpoint;
     }
@@ -54,6 +56,12 @@ public class CreateRoomCommandHandler : IRequestHandler<CreateRoomCommand, Error
             return addGymResult.Errors;
         }
 
+        await _roomChangeRepository.AddRoomChangeAsync(new RoomChange()
+        {
+            RoomId = room.Id,
+            CosmosDBUpdated = false
+        });
+        
         await _publishEndpoint.Publish(new CreateRoomCosmosDBEvent
         {
             Id = room.Id,

@@ -20,7 +20,7 @@ public class AddTrainerCommandHandler : IRequestHandler<AddTrainerCommand, Error
 
     public async Task<ErrorOr<Success>> Handle(AddTrainerCommand command, CancellationToken cancellationToken)
     {
-        Gym? gym = await _gymsRepository.GetByIdAsync(command.GymId);
+        var gym = await _gymsRepository.GetByIdAsync(command.GymId);
 
         if (gym is null)
         {

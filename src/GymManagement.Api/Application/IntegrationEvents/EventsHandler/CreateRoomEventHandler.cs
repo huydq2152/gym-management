@@ -1,4 +1,3 @@
-using GymManagement.Application.Rooms.Commands.CreateRoom.CosmosDB;
 using GymManagement.Application.Rooms.Commands.CreateRoom.CosmosDB.CreateRoomCosmosDB;
 using GymManagement.EventBus.Messages;
 using GymManagement.EventBus.Messages.IntegrationEvents.Events;

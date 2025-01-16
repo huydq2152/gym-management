@@ -3,6 +3,7 @@ using GymManagement.Application.Common.Interfaces;
 using GymManagement.Domain.Admins;
 using GymManagement.Domain.Common;
 using GymManagement.Domain.Gyms;
+using GymManagement.Domain.Rooms;
 using GymManagement.Domain.Subscriptions;
 using GymManagement.Domain.Users;
 using MediatR;
@@ -19,6 +20,7 @@ public class GymManagementDbContext : DbContext, IUnitOfWork
     public virtual DbSet<Subscription> Subscriptions { get; set; } = null!;
     public virtual DbSet<Admin> Admins { get; set; } = null!;
     public virtual DbSet<Gym> Gyms { get; set; } = null!;
+    public virtual DbSet<RoomChange> RoomChanges { get; set; } = null!;
     
     public DbSet<User> Users { get; set; } = null!;
     

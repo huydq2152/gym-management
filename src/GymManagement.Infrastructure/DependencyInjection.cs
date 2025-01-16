@@ -9,6 +9,7 @@ using GymManagement.Infrastructure.Common.Persistence;
 using GymManagement.Infrastructure.Common.Persistence.CosmosDb;
 using GymManagement.Infrastructure.Common.Persistence.CosmosDb.Interfaces;
 using GymManagement.Infrastructure.Gyms.Persistence;
+using GymManagement.Infrastructure.Rooms.Persistence;
 using GymManagement.Infrastructure.Rooms.Persistence.CosmosDB;
 using GymManagement.Infrastructure.Subscriptions.Persistence;
 using GymManagement.Infrastructure.Users;
@@ -43,6 +44,7 @@ public static class DependencyInjection
 
         services.AddScoped<ISubscriptionsRepository, SubscriptionsRepository>();
         services.AddScoped<IGymsRepository, GymsRepository>();
+        services.AddScoped<IRoomChangeRepository, RoomChangeRepository>();
         services.AddScoped<IAdminsRepository, AdminsRepository>();
         services.AddScoped<IUsersRepository, UsersRepository>();
         services.AddScoped<IUnitOfWork>(serviceProvider =>
