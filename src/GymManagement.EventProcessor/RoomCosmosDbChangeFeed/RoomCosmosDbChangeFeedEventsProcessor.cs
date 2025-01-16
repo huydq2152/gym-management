@@ -1,9 +1,8 @@
-using System.Dynamic;
 using Azure.Messaging.ServiceBus;
 using Microsoft.Azure.Cosmos;
 using Newtonsoft.Json;
 
-namespace GymManagement.EventProcessor;
+namespace GymManagement.EventProcessor.RoomCosmosDbChangeFeed;
 
 /// <summary>
 /// Background service to process change feed events from container Room in Cosmos DB and send them to Azure Service Bus.
@@ -11,10 +10,9 @@ namespace GymManagement.EventProcessor;
 /// </summary>
 public class RoomCosmosDbChangeFeedEventsProcessor : BackgroundService
 {
-    private const string EVENT_TYPE = "mutationRoomCosmosDb";
+    private const string EventType = "mutationRoomCosmosDb";
     private readonly IConfiguration _configuration;
     private readonly Container _container;
-    private readonly CosmosClient _cosmosClient;
     private readonly Container _leaseContainer;
     private readonly ILogger<RoomCosmosDbChangeFeedEventsProcessor> _logger;
     private readonly ServiceBusClient _sbClient;
@@ -42,12 +40,12 @@ public class RoomCosmosDbChangeFeedEventsProcessor : BackgroundService
         {
             (_configuration.GetSection("CosmosDB")["DatabaseName"], _configuration.GetSection("CosmosDB")["Container:Room"])
         };
-        _cosmosClient = CosmosClient.CreateAndInitializeAsync(_configuration.GetSection("CosmosDB")["EndpointUrl"],
+        var cosmosClient = CosmosClient.CreateAndInitializeAsync(_configuration.GetSection("CosmosDB")["EndpointUrl"],
             _configuration.GetSection("CosmosDB")["PrimaryKey"], containers, cOpts).Result;
 
-        _container = _cosmosClient.GetContainer(_configuration.GetSection("CosmosDB")["DatabaseName"],
+        _container = cosmosClient.GetContainer(_configuration.GetSection("CosmosDB")["DatabaseName"],
             _configuration.GetSection("CosmosDB")["Container:Room"]);
-        _leaseContainer = _cosmosClient.GetDatabase(_configuration.GetSection("CosmosDB")["DatabaseName"])
+        _leaseContainer = cosmosClient.GetDatabase(_configuration.GetSection("CosmosDB")["DatabaseName"])
             .CreateContainerIfNotExistsAsync(_configuration.GetSection("CosmosDB")["LeaseContainer"],
                 "/id").Result;
     }
@@ -70,7 +68,7 @@ public class RoomCosmosDbChangeFeedEventsProcessor : BackgroundService
     private async Task<ChangeFeedProcessor> StartChangeFeedProcessorAsync()
     {
         var changeFeedProcessor = _container
-            .GetChangeFeedProcessorBuilder<ExpandoObject>(
+            .GetChangeFeedProcessorBuilder<RoomCosmosDbChangeFeedDocument>(
                 _configuration.GetSection("CosmosDB")["ProcessorName"],
                 HandleChangesAsync)
             .WithInstanceName(Environment.MachineName)
@@ -86,7 +84,7 @@ public class RoomCosmosDbChangeFeedEventsProcessor : BackgroundService
         return changeFeedProcessor;
     }
 
-    private async Task HandleChangesAsync(IReadOnlyCollection<ExpandoObject> changes,
+    private async Task HandleChangesAsync(IReadOnlyCollection<RoomCosmosDbChangeFeedDocument> changes,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation($"Received {changes.Count} document(s).");
@@ -94,35 +92,30 @@ public class RoomCosmosDbChangeFeedEventsProcessor : BackgroundService
 
         Dictionary<string, List<ServiceBusMessage>> partitionedMessages = new();
 
-        foreach (var document in changes as dynamic)
+        foreach (var document in changes)
         {
-            if (!((IDictionary<string, object>)document).ContainsKey("type") ||
-                !((IDictionary<string, object>)document).ContainsKey("data")) continue; // unknown doc type
-
-            if (document.type == EVENT_TYPE)
+            if (document.Type != EventType) continue;
+            var json = JsonConvert.SerializeObject(document.Data);
+            var sbMessage = new ServiceBusMessage(json)
             {
-                string json = JsonConvert.SerializeObject(document.data);
-                var sbMessage = new ServiceBusMessage(json)
-                {
-                    ContentType = "application/json",
-                    Subject = document.data.action,
-                    MessageId = document.id,
-                    PartitionKey = document.partitionKey,
-                    SessionId = document.partitionKey
-                };
+                ContentType = "application/json",
+                Subject = "RoomCosmosDbChangeFeed",
+                MessageId = document.Id,
+                PartitionKey = document.PartitionKey,
+                SessionId = document.PartitionKey
+            };
 
-                // Create message batch per partitionKey
-                if (partitionedMessages.ContainsKey(document.partitionKey))
-                {
-                    partitionedMessages[sbMessage.PartitionKey].Add(sbMessage);
-                }
-                else
-                {
-                    partitionedMessages[sbMessage.PartitionKey] = new List<ServiceBusMessage> { sbMessage };
-                }
-
-                eventsCount++;
+            // Create message batch per partitionKey
+            if (partitionedMessages.ContainsKey(document.PartitionKey))
+            {
+                partitionedMessages[sbMessage.PartitionKey].Add(sbMessage);
             }
+            else
+            {
+                partitionedMessages[sbMessage.PartitionKey] = new List<ServiceBusMessage> { sbMessage };
+            }
+
+            eventsCount++;
         }
 
         if (partitionedMessages.Count > 0)

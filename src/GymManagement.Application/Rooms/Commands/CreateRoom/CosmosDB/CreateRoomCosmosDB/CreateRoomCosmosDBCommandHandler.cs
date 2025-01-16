@@ -3,7 +3,7 @@ using GymManagement.Application.Common.Interfaces.CosmosDB;
 using GymManagement.Domain.Rooms.CosmosDB;
 using MediatR;
 
-namespace GymManagement.Application.Rooms.Commands.CreateRoom.CosmosDB;
+namespace GymManagement.Application.Rooms.Commands.CreateRoom.CosmosDB.CreateRoomCosmosDB;
 
 public class CreateRoomCosmosDBCommandHandler: IRequestHandler<CreateRoomCosmosDBCommand, ErrorOr<CosmosDBRoom>>
 {

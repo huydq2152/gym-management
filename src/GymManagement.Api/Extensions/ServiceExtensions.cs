@@ -1,4 +1,5 @@
-﻿using GymManagement.Api.Application.IntegrationEvents.EventsHandler;
+﻿using System.Dynamic;
+using GymManagement.Api.Application.IntegrationEvents.EventsHandler;
 using GymManagement.Api.Configurations;
 using GymManagement.EventBus.Messages.IntegrationEvents.Events;
 using GymManagement.Infrastructure.Extensions;
@@ -31,6 +32,7 @@ public static class ServiceExtensions
             config.SetKebabCaseEndpointNameFormatter();
 
             config.AddConsumer<CreateRoomEventHandler>();
+            config.AddConsumer<RoomCosmosDbChangeFeedEventHandler>();
 
             config.AddConfigureEndpointsCallback((_, cfg) =>
             {
@@ -61,6 +63,12 @@ public static class ServiceExtensions
                 {
                     e.ConfigureConsumeTopology = false;
                     e.Consumer<CreateRoomEventHandler>(context);
+                });
+                
+                cfg.SubscriptionEndpoint<RoomCosmosDbChangeFeedEvent>("room-cosmosdb-change-feed-event-handler", e =>
+                {
+                    e.ConfigureConsumeTopology = false;
+                    e.Consumer<RoomCosmosDbChangeFeedEventHandler>(context);
                 });
             });
         });
