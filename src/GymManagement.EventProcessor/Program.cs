@@ -1,8 +1,13 @@
-using GymManagement.EventProcessor;
+using GymManagement.EventProcessor.Extensions;
 using GymManagement.EventProcessor.RoomCosmosDbChangeFeed;
 
 var host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices(services => { services.AddHostedService<RoomCosmosDbChangeFeedEventsProcessor>(); })
+    .ConfigureServices((context, services) => 
+    {
+        services
+            .AddConfigurationSettings(context.Configuration)
+            .AddHostedService<RoomCosmosDbChangeFeedEventsProcessor>();
+    })
     .Build();
 
 host.Run();

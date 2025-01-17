@@ -1,5 +1,4 @@
-﻿using System.Dynamic;
-using GymManagement.Api.Application.IntegrationEvents.EventsHandler;
+﻿using GymManagement.Api.Application.IntegrationEvents.EventsHandler;
 using GymManagement.Api.Configurations;
 using GymManagement.EventBus.Messages.IntegrationEvents.Events;
 using GymManagement.Infrastructure.Extensions;

@@ -1,5 +1,8 @@
 using Azure.Messaging.ServiceBus;
+using GymManagement.EventProcessor.Configurations;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Azure.Cosmos.Fluent;
+using Microsoft.Extensions.Options;
 using Newtonsoft.Json;
 
 namespace GymManagement.EventProcessor.RoomCosmosDbChangeFeed;
@@ -11,7 +14,8 @@ namespace GymManagement.EventProcessor.RoomCosmosDbChangeFeed;
 public class RoomCosmosDbChangeFeedEventsProcessor : BackgroundService
 {
     private const string EventType = "mutationRoomCosmosDb";
-    private readonly IConfiguration _configuration;
+    private readonly EventBusSettings _eventBusSettings;
+    private readonly CosmosDbSettings _cosmosDbSettings;
     private readonly Container _container;
     private readonly Container _leaseContainer;
     private readonly ILogger<RoomCosmosDbChangeFeedEventsProcessor> _logger;
@@ -20,34 +24,65 @@ public class RoomCosmosDbChangeFeedEventsProcessor : BackgroundService
     private ChangeFeedProcessor _cfp;
 
     public RoomCosmosDbChangeFeedEventsProcessor(ILogger<RoomCosmosDbChangeFeedEventsProcessor> logger,
-        IConfiguration configuration)
+        IOptions<EventBusSettings> eventBusSettings, IOptions<CosmosDbSettings> cosmosDbSettings)
     {
         _logger = logger;
-        _configuration = configuration;
 
-        _sbClient = new ServiceBusClient(_configuration.GetSection("ServiceBus")["ConnectionString"]);
-        _topicSender = _sbClient.CreateSender(_configuration.GetSection("ServiceBus")["Topic:RoomCosmosDbChangeFeed"]);
+        _eventBusSettings = eventBusSettings.Value;
+        _sbClient = new ServiceBusClient(_eventBusSettings.HostAddress);
+        _topicSender = _sbClient.CreateSender(_eventBusSettings.Topics.RoomCosmosDbChangeFeed.Name);
 
-        var cOpts = new CosmosClientOptions
+        var cosmosClient = BuildCosmosClient();
+        _cosmosDbSettings = cosmosDbSettings.Value;
+        InitializeContainersAsync(cosmosClient,
+            _cosmosDbSettings.DatabaseName,
+            _cosmosDbSettings.Containers.Room.Name,
+            _cosmosDbSettings.Containers.Room.PartitionKey,
+            _cosmosDbSettings.Containers.RoomLeases.Name,
+            _cosmosDbSettings.Containers.RoomLeases.PartitionKey).Wait();
+        _container = cosmosClient.GetContainer(_cosmosDbSettings.DatabaseName, _cosmosDbSettings.Containers.Room.Name);
+        _leaseContainer =
+            cosmosClient.GetContainer(_cosmosDbSettings.DatabaseName, _cosmosDbSettings.Containers.RoomLeases.Name);
+    }
+
+    private async Task InitializeContainersAsync(
+        CosmosClient cosmosClient,
+        string? databaseName, string? sourceContainerName, string? sourceContainerPartitionKey,
+        string? leaseContainerName, string? leaseContainerPartitionKey)
+    {
+        if (string.IsNullOrEmpty(databaseName)
+            || string.IsNullOrEmpty(sourceContainerName)
+            || string.IsNullOrEmpty(sourceContainerPartitionKey)
+            || string.IsNullOrEmpty(leaseContainerName)
+            || string.IsNullOrEmpty(leaseContainerPartitionKey))
         {
-            SerializerOptions = new CosmosSerializationOptions
+            throw new ArgumentNullException(
+                "'DatabaseName', 'Containers:Room:Name', 'Containers:Room:PartitionKey', 'Containers:RoomLeases:Name' and 'Containers:RoomLeases:PartitionKey' settings are required. Verify your configuration.");
+        }
+
+        Database database = await cosmosClient.CreateDatabaseIfNotExistsAsync(databaseName);
+
+        await database.CreateContainerIfNotExistsAsync(new ContainerProperties(sourceContainerName,
+            sourceContainerPartitionKey));
+        await database.CreateContainerIfNotExistsAsync(new ContainerProperties(leaseContainerName,
+            leaseContainerPartitionKey));
+    }
+
+    private CosmosClient BuildCosmosClient()
+    {
+        if (string.IsNullOrEmpty(_cosmosDbSettings.EndpointUrl) ||
+            string.IsNullOrEmpty(_cosmosDbSettings.PrimaryKey))
+        {
+            throw new ArgumentNullException("Missing 'EndpointUrl' or 'PrimaryKey' settings in configuration.");
+        }
+
+        return new CosmosClientBuilder(_cosmosDbSettings.EndpointUrl, _cosmosDbSettings.PrimaryKey)
+            .WithSerializerOptions(new CosmosSerializationOptions
             {
                 PropertyNamingPolicy = CosmosPropertyNamingPolicy.CamelCase,
                 IgnoreNullValues = true
-            }
-        };
-        var containers = new List<(string, string)>
-        {
-            (_configuration.GetSection("CosmosDB")["DatabaseName"], _configuration.GetSection("CosmosDB")["Container:Room"])
-        };
-        var cosmosClient = CosmosClient.CreateAndInitializeAsync(_configuration.GetSection("CosmosDB")["EndpointUrl"],
-            _configuration.GetSection("CosmosDB")["PrimaryKey"], containers, cOpts).Result;
-
-        _container = cosmosClient.GetContainer(_configuration.GetSection("CosmosDB")["DatabaseName"],
-            _configuration.GetSection("CosmosDB")["Container:Room"]);
-        _leaseContainer = cosmosClient.GetDatabase(_configuration.GetSection("CosmosDB")["DatabaseName"])
-            .CreateContainerIfNotExistsAsync(_configuration.GetSection("CosmosDB")["LeaseContainer"],
-                "/id").Result;
+            })
+            .Build();
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -69,8 +104,11 @@ public class RoomCosmosDbChangeFeedEventsProcessor : BackgroundService
     {
         var changeFeedProcessor = _container
             .GetChangeFeedProcessorBuilder<RoomCosmosDbChangeFeedDocument>(
-                _configuration.GetSection("CosmosDB")["ProcessorName"],
+                _cosmosDbSettings.ProcessorName,
                 HandleChangesAsync)
+            .WithLeaseAcquireNotification(OnLeaseAcquiredAsync)
+            .WithLeaseReleaseNotification(OnLeaseReleaseAsync)
+            .WithErrorNotification(OnErrorAsync)
             .WithInstanceName(Environment.MachineName)
             .WithLeaseContainer(_leaseContainer)
             .WithMaxItems(25)
@@ -81,7 +119,35 @@ public class RoomCosmosDbChangeFeedEventsProcessor : BackgroundService
         _logger.LogInformation("Starting Cosmos Change Feed Processor...");
         await changeFeedProcessor.StartAsync();
         _logger.LogInformation("Cosmos Change Feed Processor started.  Waiting for new messages to arrive.");
+
         return changeFeedProcessor;
+
+        Task OnErrorAsync(string leaseToken, Exception exception)
+        {
+            if (exception is ChangeFeedProcessorUserException userException)
+            {
+                Console.WriteLine(
+                    $"Lease {leaseToken} processing failed with unhandled exception from user delegate {userException.InnerException}");
+            }
+            else
+            {
+                Console.WriteLine($"Lease {leaseToken} failed with {exception}");
+            }
+
+            return Task.CompletedTask;
+        }
+
+        Task OnLeaseReleaseAsync(string leaseToken)
+        {
+            Console.WriteLine($"Lease {leaseToken} is released and processing is stopped");
+            return Task.CompletedTask;
+        }
+
+        Task OnLeaseAcquiredAsync(string leaseToken)
+        {
+            Console.WriteLine($"Lease {leaseToken} is acquired and will start processing");
+            return Task.CompletedTask;
+        }
     }
 
     private async Task HandleChangesAsync(IReadOnlyCollection<RoomCosmosDbChangeFeedDocument> changes,
